@@ -1,19 +1,37 @@
-!/usr/bin/env sh
+#!/usr/bin/env sh
 
+clear
 if [ "$(date +%w)" -eq 5 ]; then
-    SOURCE_DIR="/home/$USER"
+    SOURCE_DIR="/home/$USER/"
     DEST_DIR="/run/user/1000/gvfs/google-drive:host=gmail.com,user=sauloferromaciel/0ACz5kR-0HvEQUk9PVA"
-    BACKUP_FILE="backup_$(date +"%Y-%m-%d").zip"
+    data_atual=$(date +"%Y-%m-%d")
 
-    TEMP_DIR=$(mktemp -d)
+    dir_download="/home/$USER/Downloads/"
+    dir_documentos="/home/$USER/Documentos/"
+    dir_imagens="/home/$USER/Imagens/"
+    dir_video="/home/$USER/Vídeos/"
+    dir_backup="/home/$USER/Backup/"
 
-    find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -type d -exec cp -r {} "$TEMP_DIR" \;
-
-    zip -r "$DEST_DIR/$BACKUP_FILE" "$TEMP_DIR"
-
-    rm -r "$TEMP_DIR"
-
-    echo "\nBackup de sexta-feira realizado com sucesso em $DEST_DIR/$BACKUP_FILE"
+    log_file="log_Backup_${data_atual}.txt"
+    echo "----------------------------------------------\nBACKUP DE ${dir}" >> "$log_file"
+    mkdir -p "$dir_backup"
+    echo "\nmkdir Backup" >> "$log_file"
+    cp -r "$dir_download" "$dir_backup"
+    cp -r "$dir_documentos" "$dir_backup"
+    cp -r "$dir_imagens" "$dir_backup"
+    cp -r "$dir_video" "$dir_backup"
+    echo "\ncp -r "$dir_download" "$dir_backup"
+    \ncp -r "$dir_documentos" "$dir_backup"
+    \ncp -r "$dir_imagens" "$dir_backup"
+    \ncp -r "$dir_video" "$dir_backup"\n" >> "$log_file"
+    echo "\n\nDatação:${data_atual}\nUsuário:$USER\n----------------------------------------------" >> "$log_file"
+    cp "$log_file" "$dir_storage"
+    zip -r "backup.zip" "$dir_backup"
+    mv "backup.zip" "$DEST_DIR"
+    clear
+    rm -r "$dir_backup" "$log_file" "backup.zip"
+    clear
+    echo "\nBackup idealizado!\nDatação: ${data_atual} \nUsuário:$USER"
 else
     echo "Hoje não é sexta, o backup vai ser semi-automático\nOlá! Bem-vindo, eu sou um script para idealizar backup\n"
 
