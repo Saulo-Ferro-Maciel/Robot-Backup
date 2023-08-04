@@ -2,7 +2,6 @@
 
 clear
 if [ "$(date +%w)" -eq 5 ]; then
-    SOURCE_DIR="/home/$USER/"
     DEST_DIR="/run/user/1000/gvfs/google-drive:host=gmail.com,user=sauloferromaciel/0ACz5kR-0HvEQUk9PVA"
     data_atual=$(date +"%Y-%m-%d")
 
