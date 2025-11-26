@@ -3,51 +3,59 @@
 while true; do
     clear 
     echo "\nOlá! Bem-vindo, eu sou um script para idealizar backup\nVamos começar o backup em até 01 minuto:"
-    if [ "$(date +%w)" -eq 5 ]; then
-        DEST_DIR="/run/user/1000/gvfs/google-drive:host=gmail.com,user=sauloferromaciel/0ACz5kR-0HvEQUk9PVA"
-        data_atual=$(date +"%Y-%m-%d")
-        USER=$(whoami)
-        
-        dir_download="/home/$USER/Downloads/"
-        dir_documentos="/home/$USER/Documentos/"
-        dir_imagens="/home/$USER/Imagens/"
-        dir_video="/home/$USER/Vídeos/"
-        dir_backup="/home/$USER/Backup/"
+    USER=$(whoami)
 
-        log_file="log_Backup_${data_atual}.txt"
-        
-        echo "----------------------------------------------" > "$log_file"
-        echo "BACKUP DE $dir_backup" >> "$log_file"
-        echo "Datação: ${data_atual}" >> "$log_file"
-        echo "Usuário: $USER" >> "$log_file"
-        echo "----------------------------------------------" >> "$log_file"
+    echo "O backup foi convertido para modo semi-automático (sem execução automática às sextas).\nOlá! Bem-vindo, eu sou um script para idealizar backup\n"
 
-        mkdir -p "$dir_backup"
-        cp -r "$dir_download" "$dir_backup"
-        cp -r "$dir_documentos" "$dir_backup"
-        cp -r "$dir_imagens" "$dir_backup"
-        cp -r "$dir_video" "$dir_backup"
+    while true; do
+            read -p "Pressione Enter para usar o padrão (compactar todas as pastas filhas de /home/$USER), ou informe um diretório para backup: " dir
+            if [ -z "$dir" ]; then
+                read -p "Onde iremos armazenar o backup? [Enter para /home/$USER/Backup] " dir_storage
+                dir_storage=${dir_storage:-"/home/$USER/Backup"}
+                data_atual=$(date +"%Y-%m-%d")
+                log_file="log_Backup_${data_atual}.txt"
+                echo "----------------------------------------------" > "$log_file"
+                echo "BACKUP PADRÃO: coleções do usuário (Downloads, Documentos, Imagens, Músicas, Desktop, Vídeos, Fotos)" >> "$log_file"
+                echo "Datação: ${data_atual}" >> "$log_file"
+                echo "Usuário: $USER" >> "$log_file"
+                echo "----------------------------------------------" >> "$log_file"
+                mkdir -p "$dir_storage"
 
-        echo "cp -r $dir_download $dir_backup" >> "$log_file"
-        echo "cp -r $dir_documentos $dir_backup" >> "$log_file"
-        echo "cp -r $dir_imagens $dir_backup" >> "$log_file"
-        echo "cp -r $dir_video $dir_backup" >> "$log_file"
+                tmpdir=$(mktemp -d "/tmp/backup_${USER}_${data_atual}_XXXX") || tmpdir="/tmp/backup_${USER}_${data_atual}"
 
-        echo "\n\nDatação:${data_atual}\nUsuário:$USER\n----------------------------------------------" >> "$log_file"
-        cp "$log_file" "$dir_backup"
-        zip -r "backup.zip" "$dir_backup"
-        mv "backup.zip" "$DEST_DIR"
-        rm -r "$dir_backup" "$log_file" "backup.zip"
-        clear
+                # Lista de pastas a incluir (nomes comuns em pt-BR e variações)
+                dirs_to_include="Downloads Documentos Imagens Fotos Musicas Músicas Vídeos Videos 'Área de Trabalho' Desktop"
 
-        echo "\nBackup idealizado!\nDatação: ${data_atual}\nUsuário: $USER"
+                found=0
+                for name in $dirs_to_include; do
+                    # Remover aspas simples se houver
+                    name=$(echo "$name" | sed "s/'//g")
+                    src="/home/$USER/$name"
+                    if [ -d "$src" ]; then
+                        cp -a "$src" "$tmpdir/" 2>/dev/null || true
+                        echo "$src" >> "$log_file"
+                        found=1
+                    fi
+                done
 
-    else
-        echo "Hoje não é sexta, o backup vai ser semi-automático\nOlá! Bem-vindo, eu sou um script para idealizar backup\n"
+                if [ "$found" -eq 0 ]; then
+                    # Nenhuma pasta padrão encontrada: incluir todo o $HOME
+                    echo "Nenhuma pasta padrão encontrada — incluindo todo o $HOME" >> "$log_file"
+                    cp -a "/home/$USER" "$tmpdir/home_${USER}" 2>/dev/null || true
+                fi
 
-        while true; do
-            read -p "Coloque a localização do diretório que iremos fazer backup: " dir
-            echo "Essa foi a localização fornecida: ${dir}"
+                zipname="backup_${data_atual}.zip"
+                (cd "$tmpdir" && zip -r "$zipname" . >/dev/null 2>&1) || zip -r "$zipname" "$tmpdir" >/dev/null 2>&1
+                mv "$tmpdir/$zipname" "$dir_storage/" 2>/dev/null || mv "$zipname" "$dir_storage/" 2>/dev/null
+                cp "$log_file" "$dir_storage" 2>/dev/null
+                rm -rf "$tmpdir"
+                rm -f "$log_file"
+                echo "\nBackup padrão concluído: $dir_storage/$zipname"
+                # Após completar o backup padrão, sair do loop interno para perguntar se deseja continuar
+                break
+            else
+                echo "Essa foi a localização fornecida: ${dir}"
+            fi
 
             if [ -z "$dir" ]; then
                 clear
@@ -70,7 +78,9 @@ while true; do
                                     read -p "Deseja fazer uma compactação (.ZIP)? [s/n] " input_resposta
                                     resposta=$(echo "$input_resposta" | tr '[:upper:]' '[:lower:]')
                                     echo "\n2º OKAY ...\n\nPRESTE ATENÇÃO\n\nEscolha o formato do backup:\n[0] Enviar todo o diretório\n[1] Cancelar o backup\n"
-                                    dir_storage=$DEST_DIR
+                                    # Suporte a 'cloud' não disponível — usar backup local por padrão
+                                    dir_storage="/home/$USER/Backup"
+                                    echo "Aviso: opção 'cloud' não suportada - usando $dir_storage por padrão."
                                     echo ""
                                     if [ "$resposta" = "s" ]; then
                                         while true; do
@@ -100,7 +110,7 @@ while true; do
                                                 echo "\n\nDatação:${data_atual}\nUsuário:$USER\n----------------------------------------------" >> "$log_file"
                                                 cp "$log_file" "$dir_storage"
                                                 zip -r "backup.zip" "$dir_backup"
-                                                mv "backup.zip" "$DEST_DIR"
+                                                mv "backup.zip" "$dir_storage"
                                                 clear
                                                 rm -r "$dir_backup" "$log_file" "backup.zip"
                                                 clear
@@ -300,7 +310,6 @@ while true; do
                 fi
             fi
         done                                                                                
-    fi
     echo ""
     read -p "Deseja continuar com mais backups? [s/n] " dir3
     dir3=$(echo "$dir3" | tr '[:upper:]' '[:lower:]')
